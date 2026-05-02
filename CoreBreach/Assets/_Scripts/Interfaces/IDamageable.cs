@@ -1,7 +1,8 @@
 using UnityEngine;
 
-// A strategy unit we will use to differentiate between enemy attack types.
-public interface IAttackStrategy
+// if object has health, it must use
+public interface IDamageable
 {
-    void ExecuteAttack(Transform target, int damage);
+    void TakeDamage(int damageAmount );
+    void Die();
 }
