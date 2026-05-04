@@ -2,48 +2,53 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    public float moveSpeed = 5f;    //how fast we go
-    private Camera mainCam;
+    public float moveSpeed = 5f; 
+    public float turnSpeed = 300f; // how much mouse fast
+    
+    private CharacterController controller; //physics body for hit walls
+    private Animator anim;
 
     private void Start()
     {
-        //get main camera to calculate mouse position later
-        mainCam =Camera.main;
+        // mouse hide and lock center screen
+        Cursor.lockState =CursorLockMode.Locked;
+        Cursor.visible = false;
+        
+        controller =GetComponent<CharacterController>();
+        anim= GetComponent<Animator>();
     }
 
     private void Update()
     {
+        RotatePlayer();
         MovePlayer();
-        LookAtMouse();
+    }
+
+    private void RotatePlayer()
+    {
+        // get mouse move
+        float mouseX = Input.GetAxis("Mouse X");
+        transform.Rotate(Vector3.up * mouseX* turnSpeed *Time.deltaTime);
     }
 
     private void MovePlayer()
     {
-        // get WASD input
-        float horizontal= Input.GetAxisRaw("Horizontal");
-        float vertical =Input.GetAxisRaw("Vertical");
+        float horizontal = Input.GetAxisRaw("Horizontal");
+        float vertical= Input.GetAxisRaw("Vertical");
 
-        // calculate direction
-        Vector3 moveDir =new Vector3(horizontal, 0f, vertical).normalized;
+        Vector3 moveDir = (transform.forward * vertical +transform.right* horizontal).normalized;
 
-        // move the character
-        transform.Translate(moveDir *moveSpeed* Time.deltaTime,Space.World);
-    }
-
-    private void LookAtMouse()
-    {
-        Plane groundPlane =new Plane(Vector3.up,transform.position);
-        Ray ray= mainCam.ScreenPointToRay(Input.mousePosition);
-        float distance;
-
-        if (groundPlane.Raycast(ray,out distance))
+        // BIG FIX: use controller for move, so we don't go inside walls!
+        controller.Move(moveDir* moveSpeed * Time.deltaTime);
+        
+        // ANIMATION MAGIC: if we walk, play walk anim. if stop, play idle
+        if (moveDir.magnitude >0.1f)
         {
-            // find exact point mouse looking at
-            Vector3 point= ray.GetPoint(distance);
-            
-            // look at that point but keep Y same so we don't look up/down
-            Vector3 lookPoint =new Vector3(point.x, transform.position.y, point.z);
-            transform.LookAt(lookPoint);
+            anim.SetFloat("Speed",1f);
+        }
+        else
+        {
+            anim.SetFloat("Speed",0f);
         }
     }
 }
