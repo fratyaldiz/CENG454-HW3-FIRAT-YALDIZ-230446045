@@ -2,36 +2,59 @@ using UnityEngine;
 
 public class Weapon : MonoBehaviour
 {
-    // we need pool reference to take bullet
-    [SerializeField] private ObjectPool bulletPool; 
-    [SerializeField] private Transform firePoint; // where bullet come out
+    public ObjectPool bulletPool; 
+    public Transform firePoint; 
+    public float bulletForce = 40f; 
+    
+    public Camera mainCamera; 
 
-    private void Update()
+    void Update()
     {
-        // fire when mouse left click
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetButtonDown("Fire1"))
         {
             Shoot();
         }
     }
 
-    private void Shoot()
+    void Shoot()
     {
-        if (bulletPool == null) 
-        {
-            Debug.Log("we forget to put pool in inspector!");
-            return;
-        }
+        GameObject bullet =bulletPool.GetObjectFromPool();
 
-        // take bullet from pool script
-        GameObject bulletObj= bulletPool.GetObjectFromPool();
-        
-        // get bullet script
-        Bullet bulletScript =bulletObj.GetComponent<Bullet>();
-        if (bulletScript !=null)
+        if (bullet !=null)
         {
-            // send pool reference and position of bullet
-            bulletScript.SetupBullet(bulletPool,firePoint.position,firePoint.rotation);
+            // teleport to gun tip
+            bullet.transform.position = firePoint.position;
+
+            // find exact center of screen
+            Ray ray =mainCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f,0)); 
+            RaycastHit hit;
+            Vector3 targetPoint;
+
+            // if camera see a wall or enemy, target is there
+            if (Physics.Raycast(ray,out hit))
+            {
+                targetPoint= hit.point;
+            }
+            else
+            {
+                // if we look sky, just go very far away
+                targetPoint= ray.GetPoint(1000); 
+            }
+
+            // calculate direction from gun hole to crosshair target
+            Vector3 direction = (targetPoint - firePoint.position).normalized;
+            
+            // make bullet look to crosshair
+            bullet.transform.forward = direction;
+
+            Rigidbody rb= bullet.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector3.zero; 
+                
+                // push bullet to crosshair
+                rb.AddForce(direction* bulletForce, ForceMode.Impulse); 
+            }
         }
     }
 }
