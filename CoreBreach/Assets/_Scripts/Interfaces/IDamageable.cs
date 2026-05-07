@@ -1,8 +1,7 @@
 using UnityEngine;
 
-// if object has health, it must use
+// any object that can take damage uses this
 public interface IDamageable
 {
-    void TakeDamage(int damageAmount );
-    void Die();
+    void TakeDamage(int damageAmount);
 }

@@ -30,7 +30,7 @@ public class Core : MonoBehaviour, IDamageable
         }
     }
     // interface need die function too
-    public void Die()
+    private void Die()
     {
         OnCoreDestroyed?.Invoke();
         Debug.Log("CORE IS EXPLODE! GAME OVER");
