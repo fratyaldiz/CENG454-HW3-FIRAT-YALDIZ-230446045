@@ -1,31 +1,54 @@
 using UnityEngine;
 
-public class Bullet : MonoBehaviour
+public class Bullet : MonoBehaviour, IPoolable
 {
     [SerializeField] private float speed = 20f;
-    [SerializeField] private float lifeTime = 3f; // if don't hit, delete after 3 sec
-    
+    [SerializeField] private float lifeTime = 3f; // if no hit, go back after 3 sec
+    [SerializeField] private int damage = 10;
+
     private ObjectPool myPool;
     private float timer;
+    private bool isAlive; // small flag to stop double return to pool
 
-    // weapon will call this when shooting
-    public void SetupBullet(ObjectPool pool,Vector3 startPos,Quaternion startRot)
+    // weapon call this when shooting
+    public void SetupBullet(ObjectPool pool, Vector3 startPos, Quaternion startRot)
     {
-        myPool =pool;
+        myPool = pool;
         transform.position = startPos;
-        transform.rotation= startRot;
-        
-        timer = 0f; 
+        transform.rotation = startRot;
+    }
+
+    public void OnTakenFromPool()
+    {
+        timer = 0f;
+        isAlive = true;
+
+        // reset rigidbody too, old speed should not stay on new bullet
+        Rigidbody rb =GetComponent<Rigidbody>();
+        if (rb!= null)
+        {
+            rb.linearVelocity= Vector3.zero;
+            rb.angularVelocity =Vector3.zero;
+        }
+    }
+
+    // we clean events here. no events for now but place is ready
+    public void OnReturnToPool()
+    {
+        isAlive =false;
+        // future: if bullet listen any event, unsubscribe here
     }
 
     private void Update()
     {
-        // move bullet forward in world
-        transform.Translate(Vector3.forward *speed *Time.deltaTime);
+        if (!isAlive) return; // dont move if not alive
 
-        // timer for kill bullet if miss
-        timer+= Time.deltaTime;
-        if (timer >=lifeTime)
+        // move bullet forward
+        transform.Translate(Vector3.forward* speed*Time.deltaTime);
+
+        // count time, if too much go to pool
+        timer +=Time.deltaTime;
+        if (timer>= lifeTime)
         {
             DieAndGoPool();
         }
@@ -33,26 +56,31 @@ public class Bullet : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        // if we hit something, maybe it is enemy. 
-        IDamageable hitTarget = other.GetComponent<IDamageable>();
+        if (!isAlive) return; // already going back, ignore this hit
+
+        // if we hit something with health, give damage
+        IDamageable hitTarget =other.GetComponent<IDamageable>();
         if (hitTarget!= null)
         {
-            hitTarget.TakeDamage(10);   //give 10 damage
+            hitTarget.TakeDamage(damage);
         }
 
-        // hit wall or enemy, so go back to pool
         DieAndGoPool();
     }
 
     private void DieAndGoPool()
     {
-        if (myPool != null)
+        if (!isAlive) return; // stop double return
+        isAlive= false;
+
+        if (myPool!= null)
         {
             myPool.ReturnObjectToPool(this.gameObject);
         }
         else
         {
-            gameObject.SetActive(false); // second plan if pool missing
+            // safety, if pool reference broken
+            gameObject.SetActive(false);
         }
     }
 }

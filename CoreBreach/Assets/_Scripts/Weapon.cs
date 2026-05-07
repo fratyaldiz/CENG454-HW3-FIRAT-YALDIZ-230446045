@@ -42,19 +42,19 @@ public class Weapon : MonoBehaviour
             }
 
             // calculate direction from gun hole to crosshair target
-            Vector3 direction = (targetPoint - firePoint.position).normalized;
+            Vector3 direction= (targetPoint - firePoint.position).normalized;
             
             // make bullet look to crosshair
-            bullet.transform.forward = direction;
+            bullet.transform.forward =direction;
 
-            Rigidbody rb= bullet.GetComponent<Rigidbody>();
-            if (rb != null)
+            // tell bullet which pool he belongs, so he can come back later
+            Bullet bulletScript= bullet.GetComponent<Bullet>();
+            if (bulletScript !=null)
             {
-                rb.linearVelocity = Vector3.zero; 
-                
-                // push bullet to crosshair
-                rb.AddForce(direction* bulletForce, ForceMode.Impulse); 
+                bulletScript.SetupBullet(bulletPool,firePoint.position,bullet.transform.rotation);
             }
+
+            Rigidbody rb = bullet.GetComponent<Rigidbody>();
         }
     }
 }

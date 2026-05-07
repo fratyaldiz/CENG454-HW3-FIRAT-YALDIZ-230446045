@@ -3,54 +3,63 @@ using UnityEngine;
 
 public class ObjectPool : MonoBehaviour
 {
-    // NEW: we make this static so weapon can find pool easy
-    public static ObjectPool instance;
-
-    // we put this script to empty game object in unity
     [SerializeField] private GameObject prefabToPool;
-    [SerializeField] private int poolSize = 20; 
+    [SerializeField] private int poolSize = 20;
 
-    // we use queue
-    private Queue<GameObject> poolQueue;
-    
+    private Queue<GameObject>poolQueue;
+
     private void Awake()
     {
-        // setup instance
-        instance =this;
+        poolQueue = new Queue<GameObject>();
 
-        poolQueue= new Queue<GameObject>();
-
-        // we make objects before game start for no lag
-        for (int i= 0; i< poolSize;i++)
+        // we make all bullets at start so no lag in middle of game
+        for (int i = 0;i < poolSize; i++)
         {
-            GameObject obj =Instantiate(prefabToPool,transform);
+            GameObject obj =Instantiate(prefabToPool, transform);
             obj.SetActive(false);
             poolQueue.Enqueue(obj);
         }
     }
 
-    // when gun shoot, we call this to take bullet
+    // when gun shoot, we call this
     public GameObject GetObjectFromPool()
     {
-        if (poolQueue.Count >0)
+        GameObject obj;
+
+        if (poolQueue.Count> 0)
         {
-            GameObject obj= poolQueue.Dequeue(); 
-            obj.SetActive(true); 
-            return obj;
+            obj= poolQueue.Dequeue();
         }
         else
         {
-            // if pool is empty
-            GameObject obj= Instantiate(prefabToPool,transform);
-            obj.SetActive(true);
-            return obj;
+            // pool is empty, we make new one (just in case)
+            obj =Instantiate(prefabToPool, transform);
         }
+
+        obj.SetActive(true);
+
+        // if object have IPoolable, tell him "you are alive again"
+        // so he can do his fresh setup
+        IPoolable[] poolables =obj.GetComponents<IPoolable>();
+        foreach (IPoolable p in poolables)
+        {
+            p.OnTakenFromPool();
+        }
+
+        return obj;
     }
-    
-    // when bullet hit to wall, we call this to put back
+
+    // bullet hit something, we put back here
     public void ReturnObjectToPool(GameObject obj)
     {
-        obj.SetActive(false); //hide bullet
-        poolQueue.Enqueue(obj); //put back in line
+        // if we deactive first, sometimes he can not clean himself
+        IPoolable[] poolables=obj.GetComponents<IPoolable>();
+        foreach (IPoolable p in poolables)
+        {
+            p.OnReturnToPool();
+        }
+
+        obj.SetActive(false);
+        poolQueue.Enqueue(obj);
     }
 }
