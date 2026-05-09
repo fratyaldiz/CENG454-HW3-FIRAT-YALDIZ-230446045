@@ -1,51 +1,67 @@
 using UnityEngine;
-using UnityEngine.AI; // we need this for robot walk
+using UnityEngine.AI;
 
+// robot enemy. it want to go to core and attack it.
 public class EnemyAI : MonoBehaviour
 {
+    [SerializeField] private float attackRange =10f;
+    [SerializeField] private float attackCooldown= 1.5f;
+
     private Transform coreTarget;
     private IAttackStrategy myAttack;
     private NavMeshAgent agent;
+    private float nextAttackTime;
 
     private void Start()
     {
-        // robots should find core in map to kill it
-        GameObject coreObject = GameObject.Find("Core");
-        if (coreObject!= null)
+        // get core from static reference. fast and clean.
+        if (Core.Instance !=null)
         {
-            coreTarget= coreObject.transform;
+            coreTarget= Core.Instance.transform;
+        }
+        else
+        {
+            // if no core in scene, this enemy is useless
+            Debug.LogWarning("No Core in scene, enemy disable himself");
+            enabled =false;
+            return;
         }
 
         agent= GetComponent<NavMeshAgent>();
-        
-        myAttack =GetComponent<IAttackStrategy>(); 
+        myAttack = GetComponent<IAttackStrategy>();
+
+        if (myAttack == null)
+        {
+            Debug.LogWarning("Enemy has no IAttackStrategy, can not attack");
+        }
     }
 
     private void Update()
     {
-        if (coreTarget !=null && agent !=null)
+        if (coreTarget== null || agent ==null) return;
+
+        // walk to core
+        agent.SetDestination(coreTarget.position);
+
+        // check distance to decide attack or keep walking
+        float distance =Vector3.Distance(transform.position, coreTarget.position);
+
+        if (distance< attackRange)
         {
-            // go to core position
-            agent.SetDestination(coreTarget.position);
+            // close enough, stop and attack
+            agent.isStopped =true;
+            transform.LookAt(coreTarget);
 
-            // look how far is core
-            float distance = Vector3.Distance(transform.position, coreTarget.position);
-            
-            // if robot close enough, stop and shoot
-            if (distance < 10f) 
+            if (Time.time >=nextAttackTime && myAttack != null)
             {
-                agent.isStopped = true; // stop walk
-                transform.LookAt(coreTarget); // look at core
-
-                if (myAttack != null)
-                {
-                    myAttack.Attack(coreTarget); // use strategy pattern!
-                }
+                myAttack.Attack(coreTarget);
+                nextAttackTime= Time.time + attackCooldown;
             }
-            else
-            {
-                agent.isStopped = false; // continue walk
-            }
+        }
+        else
+        {
+            // too far, keep walking
+            agent.isStopped =false;
         }
     }
 }
