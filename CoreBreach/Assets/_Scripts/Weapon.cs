@@ -1,60 +1,70 @@
 using UnityEngine;
 
+// player weapon. it use IWeapon system so decorators can change behavior.
 public class Weapon : MonoBehaviour
 {
-    public ObjectPool bulletPool; 
-    public Transform firePoint; 
-    public float bulletForce = 40f; 
-    
-    public Camera mainCamera; 
+    [SerializeField] private ObjectPool bulletPool;
+    [SerializeField] private Transform firePoint;
+    [SerializeField] private Camera mainCamera;
+    [SerializeField] private float bulletForce =40f;
+    [SerializeField] private float baseCooldown=0.4f;
 
-    void Update()
+    private IWeapon currentWeapon;
+    private float nextShootTime;
+
+    private void Start()
     {
-        if (Input.GetButtonDown("Fire1"))
+        // start with base weapon, no decorators yet
+        currentWeapon = new BaseWeapon(bulletPool, bulletForce, baseCooldown);
+    }
+
+    private void Update()
+    {
+        if (Input.GetButton("Fire1") && Time.time >= nextShootTime)
         {
-            Shoot();
+            ShootCurrentWeapon();
+            nextShootTime = Time.time+currentWeapon.GetCooldown();
         }
     }
 
-    void Shoot()
+    private void ShootCurrentWeapon()
     {
-        GameObject bullet =bulletPool.GetObjectFromPool();
+        // find where camera look at
+        Ray ray = mainCamera.ViewportPointToRay(new Vector3(0.5f,0.5f,0));
+        RaycastHit hit;
+        Vector3 targetPoint;
 
-        if (bullet !=null)
+        if (Physics.Raycast(ray,out hit))
         {
-            // teleport to gun tip
-            bullet.transform.position = firePoint.position;
+            targetPoint =hit.point;
+        }
+        else
+        {
+            targetPoint= ray.GetPoint(1000);
+        }
 
-            // find exact center of screen
-            Ray ray =mainCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f,0)); 
-            RaycastHit hit;
-            Vector3 targetPoint;
+        Vector3 direction= (targetPoint -firePoint.position).normalized;
 
-            // if camera see a wall or enemy, target is there
-            if (Physics.Raycast(ray,out hit))
-            {
-                targetPoint= hit.point;
-            }
-            else
-            {
-                // if we look sky, just go very far away
-                targetPoint= ray.GetPoint(1000); 
-            }
+        currentWeapon.Shoot(firePoint.position, direction);
+    }
 
-            // calculate direction from gun hole to crosshair target
-            Vector3 direction= (targetPoint - firePoint.position).normalized;
-            
-            // make bullet look to crosshair
-            bullet.transform.forward =direction;
-
-            // tell bullet which pool he belongs, so he can come back later
-            Bullet bulletScript= bullet.GetComponent<Bullet>();
-            if (bulletScript !=null)
-            {
-                bulletScript.SetupBullet(bulletPool,firePoint.position,bullet.transform.rotation);
-            }
-
-            Rigidbody rb = bullet.GetComponent<Rigidbody>();
+    // called by pickup, wraps current weapon with new decorator
+    public void ApplyDecorator(WeaponPickup.DecoratorType type)
+    {
+        switch (type)
+        {
+            case WeaponPickup.DecoratorType.DoubleShot:
+                currentWeapon = new DoubleShotDecorator(currentWeapon);
+                Debug.Log("Picked up DoubleShot!");
+                break;
+            case WeaponPickup.DecoratorType.Piercing:
+                currentWeapon =new PiercingDecorator(currentWeapon);
+                Debug.Log("Picked up Piercing!");
+                break;
+            case WeaponPickup.DecoratorType.FireRate:
+                currentWeapon= new FireRateDecorator(currentWeapon);
+                Debug.Log("Picked up FireRate!");
+                break;
         }
     }
 }
