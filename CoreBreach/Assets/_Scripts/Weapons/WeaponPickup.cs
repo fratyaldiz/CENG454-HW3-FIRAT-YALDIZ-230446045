@@ -1,6 +1,5 @@
 using UnityEngine;
 
-// pickup object in scene. when player touch, apply decorator to weapon.
 public class WeaponPickup : MonoBehaviour
 {
     public enum DecoratorType
@@ -11,21 +10,29 @@ public class WeaponPickup : MonoBehaviour
     }
 
     [SerializeField] private DecoratorType type;
-    [SerializeField] private float rotateSpeed =90f;
+    [SerializeField] private float rotateSpeed = 90f;
 
     private void Update()
     {
-        transform.Rotate(0,rotateSpeed *Time.deltaTime, 0);
+        transform.Rotate(0, rotateSpeed * Time.deltaTime, 0);
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        Weapon weapon = FindFirstObjectByType<Weapon>();
+        // walk up parent hierarchy from bone to find weapon
+        Transform current = other.transform;
+        Weapon weapon = null;
+
+        while (current != null && weapon == null)
+        {
+            weapon = current.GetComponent<Weapon>();
+            current = current.parent;
+        }
 
         if (weapon != null)
         {
             weapon.ApplyDecorator(type);
-            Debug.Log("Pickup taken: " +type);
+            Debug.Log("Pickup taken: " + type);
             Destroy(gameObject);
         }
     }
