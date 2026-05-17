@@ -2,10 +2,9 @@ using System;
 using UnityEngine;
 
 // keeps the game state in one place.
-// when win or lose, it tell everyone via events and stop the game.
 public class GameStateManager : MonoBehaviour
 {
-    public static GameStateManager Instance { get; private set; }
+    public static GameStateManager Instance{ get; private set; }
 
     public enum GameState
     {
@@ -14,19 +13,19 @@ public class GameStateManager : MonoBehaviour
         Lost
     }
 
-    public GameState CurrentState { get; private set; } =GameState.Playing;
+    public GameState CurrentState { get;private set; } = GameState.Playing;
 
     public event Action OnGameWon;
     public event Action OnGameLost;
 
     private void Awake()
     {
-        if (Instance !=null && Instance !=this)
+        if (Instance !=null && Instance!= this)
         {
             Destroy(gameObject);
             return;
         }
-        Instance =this;
+        Instance=this;
     }
 
     private void OnEnable()
@@ -40,16 +39,16 @@ public class GameStateManager : MonoBehaviour
 
     private void Start()
     {
-        if (Core.Instance !=null)
+        if (Core.Instance != null)
         {
-            Core.Instance.OnCoreDestroyed -= HandleCoreDestroyed;
+            Core.Instance.OnCoreDestroyed-= HandleCoreDestroyed;
             Core.Instance.OnCoreDestroyed +=HandleCoreDestroyed;
         }
     }
 
     private void OnDisable()
     {
-        if (Core.Instance!= null)
+        if (Core.Instance != null)
         {
             Core.Instance.OnCoreDestroyed -=HandleCoreDestroyed;
         }
@@ -58,7 +57,7 @@ public class GameStateManager : MonoBehaviour
 
     private void HandleCoreDestroyed()
     {
-        if (CurrentState !=GameState.Playing) return;
+        if (CurrentState != GameState.Playing) return;
 
         CurrentState =GameState.Lost;
         OnGameLost?.Invoke();
@@ -66,7 +65,7 @@ public class GameStateManager : MonoBehaviour
         Debug.Log("GAME OVER - Player Lost");
     }
 
-    private int waveCount= 0;
+    private int waveCount =0;
 
     private void HandleWaveCompleted(int waveNumber)
     {
@@ -77,7 +76,9 @@ public class GameStateManager : MonoBehaviour
     {
         if (CurrentState!= GameState.Playing) return;
 
-        CurrentState = GameState.Won;
+        if (Core.Instance != null && !Core.Instance.IsAlive) return;
+
+        CurrentState =GameState.Won;
         OnGameWon?.Invoke();
         StopGame();
         Debug.Log("VICTORY - Player Won");
@@ -85,15 +86,12 @@ public class GameStateManager : MonoBehaviour
 
     private void StopGame()
     {
-        // freeze game by setting timescale to 0
-        Time.timeScale= 0f;
+        Time.timeScale =0f;
     }
 
     public void RestartGame()
     {
-        Time.timeScale =1f;
-        UnityEngine.SceneManagement.SceneManager.LoadScene(
-            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name
-        );
+        Time.timeScale= 1f;
+        UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
     }
 }
